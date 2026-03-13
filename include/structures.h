@@ -13,14 +13,21 @@ Complexity notes (high-level):
 #define WORD_MAX_LEN 64
 #define DOC_LABEL_MAX_LEN 256
 
+typedef struct PositionNode {
+    int position;
+    struct PositionNode* next;
+} PositionNode;
+
 typedef struct Posting {
     int docID;
     int frequency;
+    PositionNode* positions; /* unused for now; supports future phrase queries */
     struct Posting* next;
 } Posting;
 
 typedef struct WordEntry {
     char word[WORD_MAX_LEN];
+    int documentFrequency; /* number of documents containing this term */
     Posting* postingList;
     struct WordEntry* next; /* chained in hash bucket */
 } WordEntry;
@@ -32,7 +39,7 @@ typedef struct TrieNode {
 
 typedef struct SearchResult {
     int docID;
-    int score; /* TF-based score: sum of term frequencies */
+    double score;
 } SearchResult;
 
 #endif

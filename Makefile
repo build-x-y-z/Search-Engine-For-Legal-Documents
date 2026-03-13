@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -Iinclude -Wall -Wextra -std=c99 -O2
-LDFLAGS =
+LDFLAGS = -lm
 
 SRC_DIR = src
 INC_DIR = include
@@ -9,8 +9,10 @@ BUILD_DIR = build
 SRCS = \
 	$(SRC_DIR)/main.c \
 	$(SRC_DIR)/tokenizer.c \
+	$(SRC_DIR)/file_loader.c \
 	$(SRC_DIR)/index.c \
 	$(SRC_DIR)/search.c \
+	$(SRC_DIR)/query_parser.c \
 	$(SRC_DIR)/ranking.c \
 	$(SRC_DIR)/trie.c
 OBJS = $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.o, $(SRCS))

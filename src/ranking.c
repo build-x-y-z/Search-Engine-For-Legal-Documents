@@ -2,6 +2,16 @@
 
 #include "ranking.h"
 
+static RankingMode g_mode = RANK_TF;
+
+void ranking_set_mode(RankingMode mode) {
+    g_mode = mode;
+}
+
+RankingMode ranking_get_mode(void) {
+    return g_mode;
+}
+
 static void swap(SearchResult* a, SearchResult* b) {
     SearchResult t = *a;
     *a = *b;
@@ -30,7 +40,12 @@ static void qsort_results(SearchResult* arr, int left, int right) {
 }
 
 void rank_results(SearchResult* results, int count) {
+    rank_results_mode(results, count, g_mode);
+}
+
+void rank_results_mode(SearchResult* results, int count, RankingMode mode) {
     if (!results || count <= 1) return;
+    (void)mode; /* scoring happens in search; ranking only sorts */
     qsort_results(results, 0, count - 1);
 }
 

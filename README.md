@@ -15,26 +15,33 @@ Only standard C headers are used: `stdio.h`, `stdlib.h`, `string.h`, `ctype.h`.
 
 ```
 data/
-  documents.txt               (optional legacy manifest; not indexed during crawl)
   judgments/
   contracts/
   acts/
   case_laws/
+
 include/
   structures.h
   tokenizer.h
+  file_loader.h
   index.h
+  query_parser.h
   search.h
   ranking.h
   trie.h
+
 src/
   tokenizer.c
+  file_loader.c
   index.c
+  query_parser.c
   search.c
   ranking.c
   trie.c
   main.c
+
 Makefile
+
 ```
 
 ---
@@ -67,7 +74,7 @@ This produces `search_engine` (or `search_engine.exe` on Windows).
 ### Option B: Direct GCC (Windows / MinGW)
 
 ```powershell
-gcc -Iinclude -Wall -Wextra -std=c99 -O2 -o search_engine.exe src\main.c src\tokenizer.c src\index.c src\search.c src\ranking.c src\trie.c
+gcc -Iinclude -Wall -Wextra -std=c99 -O2 -o search_engine.exe src\main.c src\tokenizer.c src\file_loader.c src\index.c src\search.c src\query_parser.c src\ranking.c src\trie.c
 ```
 
 ---

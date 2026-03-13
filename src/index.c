@@ -22,9 +22,19 @@ void index_init(void) {
     for (int i = 0; i < HASH_SIZE; i++) g_table[i] = NULL;
 }
 
+static void free_positions(PositionNode* pos) {
+    while (pos) {
+        PositionNode* next = pos->next;
+        free(pos);
+        pos = next;
+    }
+}
+
 static void free_postings(Posting* p) {
     while (p) {
         Posting* next = p->next;
+        free_positions(p->positions);
+        p->positions = NULL;
         free(p);
         p = next;
     }
@@ -67,6 +77,10 @@ static Posting* find_posting(Posting* head, int docID, Posting** out_prev) {
 }
 
 void insert_word(char* word, int docID) {
+    insert_term(word, docID, -1);
+}
+
+void insert_term(const char* word, int docID, int position) {
     if (!word || !word[0]) return;
     if (docID <= 0) return;
 
@@ -77,6 +91,7 @@ void insert_word(char* word, int docID) {
         if (!e) return;
         memset(e, 0, sizeof(WordEntry));
         strncpy(e->word, word, WORD_MAX_LEN - 1);
+        e->documentFrequency = 0;
         e->postingList = NULL;
         e->next = g_table[bucket];
         g_table[bucket] = e;
@@ -86,6 +101,14 @@ void insert_word(char* word, int docID) {
     Posting* p = find_posting(e->postingList, docID, &prev);
     if (p) {
         p->frequency += 1;
+        if (position >= 0) {
+            /* Positional indexing is prepared but not used yet. */
+            PositionNode* node = (PositionNode*)malloc(sizeof(PositionNode));
+            if (!node) return;
+            node->position = position;
+            node->next = p->positions;
+            p->positions = node;
+        }
         return;
     }
 
@@ -94,6 +117,18 @@ void insert_word(char* word, int docID) {
     if (!n) return;
     n->docID = docID;
     n->frequency = 1;
+    n->positions = NULL;
+    if (position >= 0) {
+        PositionNode* node = (PositionNode*)malloc(sizeof(PositionNode));
+        if (!node) {
+            free(n);
+            return;
+        }
+        node->position = position;
+        node->next = NULL;
+        n->positions = node;
+    }
+    e->documentFrequency += 1;
     if (!prev) {
         n->next = e->postingList;
         e->postingList = n;
@@ -107,5 +142,19 @@ Posting* get_postings(char* word) {
     if (!word || !word[0]) return NULL;
     WordEntry* e = find_entry(word, NULL);
     return e ? e->postingList : NULL;
+}
+
+int get_document_frequency(const char* word) {
+    if (!word || !word[0]) return 0;
+    WordEntry* e = find_entry(word, NULL);
+    return e ? e->documentFrequency : 0;
+}
+
+int get_vocabulary_size(void) {
+    int count = 0;
+    for (int i = 0; i < HASH_SIZE; i++) {
+        for (WordEntry* e = g_table[i]; e; e = e->next) count++;
+    }
+    return count;
 }
 

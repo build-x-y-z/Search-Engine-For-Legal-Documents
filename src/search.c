@@ -1,38 +1,58 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "search.h"
 #include "tokenizer.h"
 #include "index.h"
 #include "ranking.h"
+#include "query_parser.h"
 
-static int is_or_token(const char* t) {
-    return (t && (strcmp(t, "or") == 0 || strcmp(t, "OR") == 0));
+static int is_or_term(const char* t) {
+    return (t && strcmp(t, "or") == 0);
 }
 
-static int contains_or(const char* query) {
-    if (!query) return 0;
-    char toks[256][WORD_MAX_LEN];
-    int n = tokenize_text(query, toks, 256);
-    for (int i = 0; i < n; i++) {
-        if (is_or_token(toks[i])) return 1;
-    }
-    /* Also handle raw " OR " that tokenizer would normalize away (kept for clarity). */
-    return 0;
-}
-
-static int search_and_terms(char terms[][WORD_MAX_LEN], int term_count, SearchResult** out_results, int* out_count) {
+static int search_and_terms(char** terms, int term_count, SearchResult** out_results, int* out_count) {
     *out_results = NULL;
     *out_count = 0;
     if (term_count <= 0) return 1;
 
-    Posting* lists[64];
-    if (term_count > 64) term_count = 64;
+    Posting** lists = (Posting**)malloc((size_t)term_count * sizeof(Posting*));
+    Posting** iters = (Posting**)malloc((size_t)term_count * sizeof(Posting*));
+    if (!lists || !iters) {
+        free(lists);
+        free(iters);
+        return 0;
+    }
+
+    const RankingMode mode = ranking_get_mode();
+    const int n_docs = get_document_count();
+
+    double* idf = NULL;
+    if (mode == RANK_TFIDF) {
+        idf = (double*)malloc((size_t)term_count * sizeof(double));
+        if (!idf) {
+            free(lists);
+            free(iters);
+            return 0;
+        }
+        for (int i = 0; i < term_count; i++) {
+            const int df = get_document_frequency(terms[i]);
+            if (df <= 0 || n_docs <= 0) {
+                idf[i] = 0.0;
+            } else {
+                idf[i] = log((double)n_docs / (double)df);
+            }
+        }
+    }
 
     for (int i = 0; i < term_count; i++) {
         lists[i] = get_postings(terms[i]);
         if (!lists[i]) {
+            free(lists);
+            free(iters);
+            free(idf);
             return 1; /* empty intersection */
         }
     }
@@ -50,17 +70,20 @@ static int search_and_terms(char terms[][WORD_MAX_LEN], int term_count, SearchRe
     }
 
     Posting* base = lists[best];
-    Posting* iters[64];
     for (int i = 0; i < term_count; i++) iters[i] = lists[i];
 
     int cap = 32;
     SearchResult* results = (SearchResult*)malloc((size_t)cap * sizeof(SearchResult));
-    if (!results) return 0;
+    if (!results) {
+        free(lists);
+        free(iters);
+        return 0;
+    }
     int count = 0;
 
     for (Posting* p0 = base; p0; p0 = p0->next) {
         int doc = p0->docID;
-        int score = p0->frequency;
+        double score = (mode == RANK_TFIDF && idf) ? ((double)p0->frequency * idf[best]) : (double)p0->frequency;
         int ok = 1;
 
         for (int t = 0; t < term_count; t++) {
@@ -72,7 +95,8 @@ static int search_and_terms(char terms[][WORD_MAX_LEN], int term_count, SearchRe
                 ok = 0;
                 break;
             }
-            score += cur->frequency;
+            if (mode == RANK_TFIDF && idf) score += (double)cur->frequency * idf[t];
+            else score += (double)cur->frequency;
         }
 
         if (ok) {
@@ -81,6 +105,8 @@ static int search_and_terms(char terms[][WORD_MAX_LEN], int term_count, SearchRe
                 SearchResult* grown = (SearchResult*)realloc(results, (size_t)cap * sizeof(SearchResult));
                 if (!grown) {
                     free(results);
+                    free(lists);
+                    free(iters);
                     return 0;
                 }
                 results = grown;
@@ -94,24 +120,45 @@ static int search_and_terms(char terms[][WORD_MAX_LEN], int term_count, SearchRe
     if (count > 0) rank_results(results, count);
     *out_results = results;
     *out_count = count;
+    free(lists);
+    free(iters);
+    free(idf);
     return 1;
 }
 
-static int search_or_terms(char terms[][WORD_MAX_LEN], int term_count, SearchResult** out_results, int* out_count) {
+static int search_or_terms(char** terms, int term_count, SearchResult** out_results, int* out_count) {
     *out_results = NULL;
     *out_count = 0;
     if (term_count <= 0) return 1;
 
+    const RankingMode mode = ranking_get_mode();
     int n_docs = get_document_count();
     if (n_docs <= 0) return 1;
 
-    int* scores = (int*)calloc((size_t)(n_docs + 1), sizeof(int));
+    double* scores = (double*)calloc((size_t)(n_docs + 1), sizeof(double));
     if (!scores) return 0;
+
+    double* idf = NULL;
+    if (mode == RANK_TFIDF) {
+        idf = (double*)malloc((size_t)term_count * sizeof(double));
+        if (!idf) {
+            free(scores);
+            return 0;
+        }
+        for (int i = 0; i < term_count; i++) {
+            const int df = get_document_frequency(terms[i]);
+            if (df <= 0 || n_docs <= 0) idf[i] = 0.0;
+            else idf[i] = log((double)n_docs / (double)df);
+        }
+    }
 
     for (int i = 0; i < term_count; i++) {
         Posting* p = get_postings(terms[i]);
         while (p) {
-            if (p->docID >= 1 && p->docID <= n_docs) scores[p->docID] += p->frequency;
+            if (p->docID >= 1 && p->docID <= n_docs) {
+                if (mode == RANK_TFIDF && idf) scores[p->docID] += (double)p->frequency * idf[i];
+                else scores[p->docID] += (double)p->frequency;
+            }
             p = p->next;
         }
     }
@@ -125,13 +172,14 @@ static int search_or_terms(char terms[][WORD_MAX_LEN], int term_count, SearchRes
 
     int count = 0;
     for (int doc = 1; doc <= n_docs; doc++) {
-        if (scores[doc] > 0) {
+        if (scores[doc] > 0.0) {
             if (count >= cap) {
                 cap *= 2;
                 SearchResult* grown = (SearchResult*)realloc(results, (size_t)cap * sizeof(SearchResult));
                 if (!grown) {
                     free(results);
                     free(scores);
+                    free(idf);
                     return 0;
                 }
                 results = grown;
@@ -143,6 +191,7 @@ static int search_or_terms(char terms[][WORD_MAX_LEN], int term_count, SearchRes
     }
 
     free(scores);
+    free(idf);
     if (count > 0) rank_results(results, count);
     *out_results = results;
     *out_count = count;
@@ -156,24 +205,59 @@ int search_query(const char* query, SearchResult** out_results, int* out_count) 
 
     if (!query) return 1;
 
-    /* Tokenize (normalized terms) */
-    char raw[512][WORD_MAX_LEN];
-    int raw_n = tokenize_text(query, raw, 512);
-    if (raw_n <= 0) return 1;
-
-    /* Split by OR token (very simple boolean support). */
-    if (contains_or(query)) {
-        char terms[512][WORD_MAX_LEN];
-        int n = 0;
-        for (int i = 0; i < raw_n; i++) {
-            if (is_or_token(raw[i])) continue;
-            strncpy(terms[n], raw[i], WORD_MAX_LEN - 1);
-            terms[n][WORD_MAX_LEN - 1] = '\0';
-            n++;
+    /* Detect operators (future boolean parser will use this). */
+    Query q;
+    if (!query_parse(query, &q)) return 0;
+    int has_or = 0;
+    for (int i = 0; i < q.count; i++) {
+        if (q.tokens[i].type == QUERY_TOKEN_OR) {
+            has_or = 1;
+            break;
         }
-        return search_or_terms(terms, n, out_results, out_count);
+    }
+    query_free(&q);
+
+    /* Tokenize normalized terms (keeps current stopword behavior). */
+    char** raw_terms = NULL;
+    int raw_n = 0;
+    if (!tokenize_text_dynamic(query, &raw_terms, &raw_n)) return 0;
+    if (raw_n <= 0) {
+        tokenize_free_tokens(raw_terms, raw_n);
+        return 1;
     }
 
-    return search_and_terms(raw, raw_n, out_results, out_count);
+    if (has_or) {
+        /* Remove the OR operator token from term list (matches old behavior). */
+        int kept = 0;
+        for (int i = 0; i < raw_n; i++) if (!is_or_term(raw_terms[i])) kept++;
+        if (kept == 0) {
+            tokenize_free_tokens(raw_terms, raw_n);
+            return 1;
+        }
+        char** terms = (char**)malloc((size_t)kept * sizeof(char*));
+        if (!terms) {
+            tokenize_free_tokens(raw_terms, raw_n);
+            return 0;
+        }
+        int n = 0;
+        for (int i = 0; i < raw_n; i++) {
+            if (is_or_term(raw_terms[i])) continue;
+            terms[n++] = raw_terms[i];
+            raw_terms[i] = NULL; /* transfer ownership */
+        }
+        /* Free remaining (e.g., "or") and container */
+        for (int i = 0; i < raw_n; i++) free(raw_terms[i]);
+        free(raw_terms);
+
+        int ok = search_or_terms(terms, n, out_results, out_count);
+        tokenize_free_tokens(terms, n);
+        return ok;
+    }
+
+    {
+        int ok = search_and_terms(raw_terms, raw_n, out_results, out_count);
+        tokenize_free_tokens(raw_terms, raw_n);
+        return ok;
+    }
 }
 

@@ -6,46 +6,44 @@
 #include "tokenizer.h"
 #include "index.h"
 #include "trie.h"
+#include "file_loader.h"
 
-#define MAX_DOCS 2048
 #define MAX_LINE 8192
 
 static int g_doc_count = 0;
-static char g_doc_labels[MAX_DOCS][DOC_LABEL_MAX_LEN];
-static char* g_doc_texts[MAX_DOCS];
+static int g_doc_cap = 0;
+static char** g_doc_labels = NULL; /* 1-indexed */
+static char** g_doc_texts = NULL;  /* 1-indexed */
+static long long g_total_tokens_indexed = 0;
 
-#ifdef _WIN32
-/* MinGW may not declare popen/pclose in strict C99 mode. */
-FILE* popen(const char* command, const char* mode);
-int pclose(FILE* stream);
-#endif
-
-static char* read_entire_file(const char* path) {
-    FILE* f = fopen(path, "rb");
-    if (!f) return NULL;
-    if (fseek(f, 0, SEEK_END) != 0) {
-        fclose(f);
-        return NULL;
-    }
-    long n = ftell(f);
-    if (n < 0) {
-        fclose(f);
-        return NULL;
-    }
-    if (fseek(f, 0, SEEK_SET) != 0) {
-        fclose(f);
-        return NULL;
+static int ensure_doc_capacity(int needed_docID) {
+    if (needed_docID <= g_doc_cap) return 1;
+    int new_cap = (g_doc_cap > 0) ? g_doc_cap : 128;
+    while (new_cap < needed_docID) {
+        if (new_cap > 1 << 28) return 0;
+        new_cap *= 2;
     }
 
-    char* buf = (char*)malloc((size_t)n + 1);
-    if (!buf) {
-        fclose(f);
-        return NULL;
+    char** new_labels = (char**)realloc(g_doc_labels, (size_t)(new_cap + 1) * sizeof(char*));
+    if (!new_labels) return 0;
+    char** new_texts = (char**)realloc(g_doc_texts, (size_t)(new_cap + 1) * sizeof(char*));
+    if (!new_texts) {
+        /* Best-effort: keep existing arrays unchanged on failure. */
+        /* Note: realloc already updated new_labels pointer; we must not lose it. */
+        /* This is still safe because g_doc_labels already points to new_labels. */
+        g_doc_labels = new_labels;
+        return 0;
     }
-    size_t got = fread(buf, 1, (size_t)n, f);
-    buf[got] = '\0';
-    fclose(f);
-    return buf;
+
+    for (int i = g_doc_cap + 1; i <= new_cap; i++) {
+        new_labels[i] = NULL;
+        new_texts[i] = NULL;
+    }
+
+    g_doc_labels = new_labels;
+    g_doc_texts = new_texts;
+    g_doc_cap = new_cap;
+    return 1;
 }
 
 static int is_stopword(const char* w) {
@@ -59,6 +57,25 @@ static int is_stopword(const char* w) {
         if (strcmp(w, stop[i]) == 0) return 1;
     }
     return 0;
+}
+
+char* normalize_token(char* token) {
+    if (!token) return NULL;
+    /*
+    Current normalization:
+    - lowercase
+    - remove punctuation (keep [A-Za-z0-9_])
+    Future: stemming/lemmatization can be plugged here.
+    */
+    int w = 0;
+    for (int r = 0; token[r] != '\0'; r++) {
+        unsigned char ch = (unsigned char)token[r];
+        if (isalnum(ch) || ch == '_') {
+            token[w++] = (char)tolower(ch);
+        }
+    }
+    token[w] = '\0';
+    return token;
 }
 
 int tokenize_text(const char* text, char tokens[][WORD_MAX_LEN], int max_tokens) {
@@ -79,6 +96,7 @@ int tokenize_text(const char* text, char tokens[][WORD_MAX_LEN], int max_tokens)
         } else {
             if (len > 0) {
                 cur[len] = '\0';
+                normalize_token(cur);
                 if (!is_stopword(cur)) {
                     strncpy(tokens[out], cur, WORD_MAX_LEN - 1);
                     tokens[out][WORD_MAX_LEN - 1] = '\0';
@@ -94,12 +112,74 @@ int tokenize_text(const char* text, char tokens[][WORD_MAX_LEN], int max_tokens)
     return out;
 }
 
+void tokenize_free_tokens(char** tokens, int count) {
+    if (!tokens) return;
+    for (int i = 0; i < count; i++) free(tokens[i]);
+    free(tokens);
+}
+
+int tokenize_text_dynamic(const char* text, char*** out_tokens, int* out_count) {
+    if (!out_tokens || !out_count) return 0;
+    *out_tokens = NULL;
+    *out_count = 0;
+    if (!text) return 1;
+
+    int cap = 64;
+    char** toks = (char**)malloc((size_t)cap * sizeof(char*));
+    if (!toks) return 0;
+    int n = 0;
+
+    char cur[WORD_MAX_LEN];
+    int len = 0;
+
+    for (int i = 0; ; i++) {
+        unsigned char ch = (unsigned char)text[i];
+        int done = (ch == 0);
+
+        if (!done && (isalnum(ch) || ch == '_')) {
+            if (len < WORD_MAX_LEN - 1) cur[len++] = (char)tolower(ch);
+        } else {
+            if (len > 0) {
+                cur[len] = '\0';
+                normalize_token(cur);
+                if (!is_stopword(cur) && cur[0] != '\0') {
+                    if (n >= cap) {
+                        cap *= 2;
+                        char** grown = (char**)realloc(toks, (size_t)cap * sizeof(char*));
+                        if (!grown) {
+                            tokenize_free_tokens(toks, n);
+                            return 0;
+                        }
+                        toks = grown;
+                    }
+                    toks[n] = (char*)malloc(strlen(cur) + 1);
+                    if (!toks[n]) {
+                        tokenize_free_tokens(toks, n);
+                        return 0;
+                    }
+                    strcpy(toks[n], cur);
+                    n++;
+                }
+                len = 0;
+            }
+            if (done) break;
+        }
+    }
+
+    *out_tokens = toks;
+    *out_count = n;
+    return 1;
+}
+
 static void free_docs(void) {
     for (int i = 1; i <= g_doc_count; i++) {
-        free(g_doc_texts[i]);
+        free(g_doc_labels ? g_doc_labels[i] : NULL);
+        free(g_doc_texts ? g_doc_texts[i] : NULL);
+        if (g_doc_labels) g_doc_labels[i] = NULL;
         g_doc_texts[i] = NULL;
     }
     g_doc_count = 0;
+    g_total_tokens_indexed = 0;
 }
 
 int get_document_count(void) {
@@ -108,12 +188,16 @@ int get_document_count(void) {
 
 const char* get_document_label(int docID) {
     if (docID <= 0 || docID > g_doc_count) return NULL;
-    return g_doc_labels[docID];
+    return g_doc_labels ? g_doc_labels[docID] : NULL;
 }
 
 const char* get_document_text(int docID) {
     if (docID <= 0 || docID > g_doc_count) return NULL;
-    return g_doc_texts[docID];
+    return g_doc_texts ? g_doc_texts[docID] : NULL;
+}
+
+long long get_total_tokens_indexed(void) {
+    return g_total_tokens_indexed;
 }
 
 static void rtrim_newline(char* s) {
@@ -127,27 +211,43 @@ static void rtrim_newline(char* s) {
 
 static void index_doc_text(const char* label, const char* text) {
     if (!text || !text[0]) return;
-    if (g_doc_count + 1 >= MAX_DOCS) return;
+    if (!ensure_doc_capacity(g_doc_count + 1)) return;
 
     g_doc_count++;
     int docID = g_doc_count;
 
     if (label && label[0]) {
-        strncpy(g_doc_labels[docID], label, DOC_LABEL_MAX_LEN - 1);
-        g_doc_labels[docID][DOC_LABEL_MAX_LEN - 1] = '\0';
+        size_t n = strlen(label);
+        if (n > (size_t)DOC_LABEL_MAX_LEN - 1) n = (size_t)DOC_LABEL_MAX_LEN - 1;
+        g_doc_labels[docID] = (char*)malloc(n + 1);
+        if (g_doc_labels[docID]) {
+            memcpy(g_doc_labels[docID], label, n);
+            g_doc_labels[docID][n] = '\0';
+        }
     } else {
-        snprintf(g_doc_labels[docID], DOC_LABEL_MAX_LEN, "DOC%d", docID);
+        char tmp[DOC_LABEL_MAX_LEN];
+        snprintf(tmp, sizeof(tmp), "DOC%d", docID);
+        g_doc_labels[docID] = (char*)malloc(strlen(tmp) + 1);
+        if (g_doc_labels[docID]) strcpy(g_doc_labels[docID], tmp);
     }
 
     g_doc_texts[docID] = (char*)malloc(strlen(text) + 1);
     if (g_doc_texts[docID]) strcpy(g_doc_texts[docID], text);
 
-    char toks[4096][WORD_MAX_LEN];
-    int n = tokenize_text(text, toks, 4096);
+    char** toks = NULL;
+    int n = 0;
+    if (!tokenize_text_dynamic(text, &toks, &n)) return;
     for (int i = 0; i < n; i++) {
+        g_total_tokens_indexed += 1;
         insert_word(toks[i], docID);
         insert_trie(toks[i]);
     }
+    tokenize_free_tokens(toks, n);
+}
+
+static void file_loader_sink(const char* label, const char* text, void* user) {
+    (void)user;
+    index_doc_text(label, text);
 }
 
 void tokenize_document(const char* filename) {
@@ -167,19 +267,25 @@ void tokenize_document(const char* filename) {
         char* colon = strchr(line, ':');
         if (!colon) continue;
 
-        if (g_doc_count + 1 >= MAX_DOCS) break;
+        if (!ensure_doc_capacity(g_doc_count + 1)) break;
         g_doc_count++;
         int docID = g_doc_count;
 
         /* label: everything before ':' */
         int label_len = (int)(colon - line);
         if (label_len <= 0) {
-            snprintf(g_doc_labels[docID], DOC_LABEL_MAX_LEN, "DOC%d", docID);
+            char tmp[DOC_LABEL_MAX_LEN];
+            snprintf(tmp, sizeof(tmp), "DOC%d", docID);
+            g_doc_labels[docID] = (char*)malloc(strlen(tmp) + 1);
+            if (g_doc_labels[docID]) strcpy(g_doc_labels[docID], tmp);
         } else {
             int copy = label_len;
             if (copy > DOC_LABEL_MAX_LEN - 1) copy = DOC_LABEL_MAX_LEN - 1;
-            memcpy(g_doc_labels[docID], line, (size_t)copy);
-            g_doc_labels[docID][copy] = '\0';
+            g_doc_labels[docID] = (char*)malloc((size_t)copy + 1);
+            if (g_doc_labels[docID]) {
+                memcpy(g_doc_labels[docID], line, (size_t)copy);
+                g_doc_labels[docID][copy] = '\0';
+            }
         }
 
         /* store full text (after ':') for display/snippets if desired */
@@ -188,12 +294,15 @@ void tokenize_document(const char* filename) {
         g_doc_texts[docID] = (char*)malloc(strlen(body) + 1);
         if (g_doc_texts[docID]) strcpy(g_doc_texts[docID], body);
 
-        char toks[2048][WORD_MAX_LEN];
-        int n = tokenize_text(body, toks, 2048);
+        char** toks = NULL;
+        int n = 0;
+        if (!tokenize_text_dynamic(body, &toks, &n)) continue;
         for (int i = 0; i < n; i++) {
+            g_total_tokens_indexed += 1;
             insert_word(toks[i], docID);
             insert_trie(toks[i]);
         }
+        tokenize_free_tokens(toks, n);
     }
 
     fclose(f);
@@ -204,50 +313,7 @@ void tokenize_directory(const char* root_dir) {
 
     free_docs();
 
-#ifdef _WIN32
-    /*
-    Windows recursive crawl: `dir /b /s root_dir\*.txt`
-    Uses only stdio/stdlib/string; relies on the OS shell for directory listing.
-    */
-    char cmd[1024];
-    snprintf(cmd, sizeof(cmd), "dir /b /s \"%s\\*.txt\"", root_dir);
-
-    FILE* pipe = popen(cmd, "r");
-    if (!pipe) {
-        printf("Error: unable to list files under %s\n", root_dir);
-        return;
-    }
-
-    char path[1024];
-    while (fgets(path, (int)sizeof(path), pipe)) {
-        rtrim_newline(path);
-        if (path[0] == '\0') continue;
-
-        /* Avoid indexing the old manifest-style documents file as a normal document. */
-        {
-            const char* leaf = strrchr(path, '\\');
-            leaf = leaf ? (leaf + 1) : path;
-            if (strcmp(leaf, "documents.txt") == 0) continue;
-        }
-
-        char* content = read_entire_file(path);
-        if (!content) continue;
-
-        /* Use the full path as label (shortened into DOC_LABEL_MAX_LEN) */
-        index_doc_text(path, content);
-        free(content);
-    }
-
-    pclose(pipe);
-
-#else
-    /*
-    Portable fallback (no directory traversal in standard C):
-    Put a manifest in `data/documents.txt` (DOCx: text) or extend the program later
-    with platform-specific APIs.
-    */
-    (void)root_dir;
-    printf("Directory indexing is only implemented on Windows builds.\n");
-#endif
+    file_loader_set_sink(file_loader_sink, NULL);
+    (void)load_documents_from_directory(root_dir);
 }
 

@@ -6,6 +6,7 @@
 #include "index.h"
 #include "search.h"
 #include "trie.h"
+#include "ranking.h"
 
 static void trim_newline(char* s) {
     if (!s) return;
@@ -17,6 +18,19 @@ static int starts_with(const char* s, const char* prefix) {
         if (*s++ != *prefix++) return 0;
     }
     return 1;
+}
+
+static void print_index_statistics(void) {
+    int docs = get_document_count();
+    int vocab = get_vocabulary_size();
+    long long tokens = get_total_tokens_indexed();
+    double avg_len = (docs > 0) ? ((double)tokens / (double)docs) : 0.0;
+
+    printf("\nIndex statistics:\n");
+    printf("Documents indexed: %d\n", docs);
+    printf("Vocabulary size: %d\n", vocab);
+    printf("Total tokens indexed: %lld\n", tokens);
+    printf("Average document length: %.2f\n\n", avg_len);
 }
 
 int main(void) {
@@ -36,6 +50,8 @@ int main(void) {
     printf("  - Enter keywords to search (default AND). Example: contract breach\n");
     printf("  - Use OR for union. Example: contract OR criminal\n");
     printf("  - Autocomplete: ac <prefix>   Example: ac con\n");
+    printf("  - Ranking mode: rank tf | rank tfidf\n");
+    printf("  - Index statistics: stats\n");
     printf("  - Quit: quit\n\n");
 
     char line[1024];
@@ -47,6 +63,11 @@ int main(void) {
 
         if (strcmp(line, "quit") == 0 || strcmp(line, "exit") == 0) break;
 
+        if (strcmp(line, "stats") == 0) {
+            print_index_statistics();
+            continue;
+        }
+
         if (starts_with(line, "ac ")) {
             char* prefix = line + 3;
             while (*prefix == ' ') prefix++;
@@ -56,6 +77,21 @@ int main(void) {
             }
             printf("Suggestions:\n");
             autocomplete(prefix);
+            continue;
+        }
+
+        if (starts_with(line, "rank ")) {
+            char* mode = line + 5;
+            while (*mode == ' ') mode++;
+            if (strcmp(mode, "tf") == 0) {
+                ranking_set_mode(RANK_TF);
+                printf("Ranking mode set to TF\n");
+            } else if (strcmp(mode, "tfidf") == 0) {
+                ranking_set_mode(RANK_TFIDF);
+                printf("Ranking mode set to TF-IDF\n");
+            } else {
+                printf("(usage) rank tf | rank tfidf\n");
+            }
             continue;
         }
 
@@ -78,7 +114,7 @@ int main(void) {
         for (int i = 0; i < top; i++) {
             const char* label = get_document_label(results[i].docID);
             if (!label) label = "(unknown)";
-            printf("%s (score %d)\n", label, results[i].score);
+            printf("%s (score %.2f)\n", label, results[i].score);
         }
         printf("\n");
 
