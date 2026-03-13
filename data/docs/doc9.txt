@@ -1,0 +1,21 @@
+Tax Law Overview: Principles and Compliance
+
+Tax law governs the imposition of taxes by governmental authorities and provides the legal framework for tax administration, collection, and dispute resolution. It encompasses federal, state, and local statutes, regulations, and case law. The Internal Revenue Code (IRC) is the primary body of federal tax law in the United States, administered by the Internal Revenue Service (IRS).
+
+Taxpayers include individuals, corporations, partnerships, trusts, and estates. Federal income tax is imposed on individuals and entities based on taxable income, computed by subtracting allowable deductions from gross income. Common deductions include business expenses, mortgage interest, charitable contributions, and depreciation. The IRC also provides for capital gains and losses, which are realized upon the sale or exchange of capital assets.
+
+Corporate taxation includes rules for C corporations, which are taxed at the entity level, and S corporations, which elect pass-through treatment, allowing income to flow through to shareholders. Partnerships and limited liability companies (LLCs) generally receive pass-through taxation, with income, deductions, and credits allocated to partners or members according to the partnership agreement.
+
+Tax planning involves structuring transactions to achieve favorable tax consequences while complying with the law. Strategies may include timing of income and deductions, choice of entity, utilization of tax credits such as the research and development (R&D) credit, and use of tax-deferred exchanges (e.g., like-kind exchanges under Section 1031).
+
+International tax law addresses cross-border taxation, including issues of residence, source of income, transfer pricing, and tax treaties. The U.S. taxes its citizens and residents on worldwide income, with foreign tax credits available to mitigate double taxation. Controlled foreign corporation (CFC) rules, Subpart F income, and the global intangible low-taxed income (GILTI) regime govern taxation of foreign subsidiaries.
+
+Tax compliance requires filing returns, maintaining records, and making timely payments. Failure to comply can result in penalties, interest, and potential criminal liability for tax evasion. The IRS conducts audits to verify the accuracy of tax returns; taxpayers have rights during audits, including the right to appeal adverse determinations and to seek administrative and judicial review.
+
+State and local taxes include income taxes, sales and use taxes, property taxes, and excise taxes. Each jurisdiction has its own rules and rates, and nexus requirements determine when a business must collect or pay taxes in that jurisdiction. Sales tax collection has become more complex with the growth of ecommerce, as demonstrated by the Supreme Courts decision in South Dakota v. Wayfair.
+
+Tax controversy practice involves representing taxpayers in disputes with tax authorities, including negotiating settlements, participating in administrative appeals, and litigating in tax courts or federal courts. Innocent spouse relief, offer-in-compromise, and installment agreements are mechanisms to resolve tax liabilities.
+
+Tax-exempt organizations, such as charities and foundations, must meet specific requirements under Section 501(c)(3) and other provisions to qualify for exemption from federal income tax. These organizations are subject to operational and reporting rules, including restrictions on political activities.
+
+Because tax laws are intricate and frequently changing, individuals and businesses should consult experienced tax professionals to ensure compliance and optimize tax positions. Continuous monitoring of legislative developments, IRS guidance, and case law is essential for effective tax management.

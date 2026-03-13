@@ -1,0 +1,21 @@
+Corporate Governance and Compliance
+
+Corporate governance refers to the system by which companies are directed and controlled. It encompasses the relationships among a company's management, board of directors, shareholders, and other stakeholders. Effective governance promotes accountability, fairness, and transparency, and contributes to long-term success and investor confidence.
+
+Boards of directors are central to corporate governance. Directors owe fiduciary duties of care and loyalty to the corporation and its shareholders. The duty of care requires directors to make informed decisions, typically by relying on appropriate information and advice. The duty of loyalty mandates that directors act in the best interests of the corporation, avoiding self-dealing and conflicts of interest. Business judgment rule provides that courts will not second-guess good-faith decisions made by directors with a rational basis.
+
+Corporate bylaws and charters set forth the rules for shareholder meetings, voting procedures, director elections, and officer appointments. Shareholder rights may include the ability to vote on major transactions, elect directors, approve mergers, and inspect corporate records. Some jurisdictions permit shareholder derivative lawsuits, allowing shareholders to sue on behalf of the corporation for harms caused by management.
+
+Compliance programs help companies adhere to legal and ethical standards. These programs typically include codes of conduct, training, monitoring, reporting mechanisms, and disciplinary measures. Key areas of regulatory compliance include securities laws, antitrust, anti-corruption (e.g., the U.S. Foreign Corrupt Practices Act, the UK Bribery Act), environmental regulations, and industry-specific requirements. Companies must also comply with financial reporting obligations under laws such as the Sarbanes-Oxley Act and the Securities Exchange Act, which mandate accurate disclosure and internal controls.
+
+Risk management is an integral part of governance. Boards often establish committees—such as audit, compensation, and nominating/governance committees—to oversee specific functions and mitigate risks. Audit committees, composed of independent directors, play a critical role in overseeing financial reporting, internal controls, and the relationship with external auditors.
+
+Corporate governance is influenced by market forces, regulatory regimes, and stakeholder activism. Institutional investors may engage in shareholder activism, advocating for changes in management, governance practices, or corporate strategy. Proxy advisory firms provide recommendations on shareholder votes, and failure to adhere to their guidelines may impact shareholder support.
+
+Transparency and disclosure are hallmarks of good governance. Public companies are required to file periodic reports with securities regulators, including Form 10-K annual reports, Form 10-Q quarterly reports, and proxy statements. These filings inform investors about financial performance, executive compensation, risk factors, and governance practices.
+
+Corporate social responsibility and environmental, social, and governance (ESG) considerations have gained prominence, with stakeholders expecting companies to address social and environmental impacts. Boards are increasingly integrating ESG metrics into decision-making and reporting.
+
+Mergers and acquisitions raise governance issues as well. Acquiring companies must conduct due diligence, evaluate potential liabilities, and consider the implications for shareholders and regulators. Takeover defenses, such as poison pills or staggered boards, may be employed to deter hostile acquisitions, though they are subject to judicial scrutiny.
+
+Governance standards vary by jurisdiction and entity type. Public companies tend to face more stringent requirements, while privately held firms have greater flexibility. Regardless, establishing clear governance frameworks and fostering a culture of compliance enhances corporate integrity and resilience.

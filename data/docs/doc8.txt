@@ -1,0 +1,21 @@
+Real Estate Law: Transactions and Titles
+
+Real estate law governs the ownership, use, financing, and transfer of land and interests in land. It encompasses many areas including conveyancing, leasing, zoning, mortgages, easements, and title insurance. A basic real estate transaction involves a seller conveying property to a buyer through a deed, often in exchange for consideration.
+
+Title to real property is evidenced by records in the land registry or recorders office. A title search identifies recorded instruments affecting the property, such as liens, mortgages, encumbrances, easements, and covenants. Title insurance policies protect buyers and lenders against losses due to defects in title that were not discovered during the title search. Common defects include undisclosed heirs, forged documents, or improper recording.
+
+Contracts for sale of real property must comply with the statute of frauds, requiring a written agreement signed by the parties. The contract delineates terms such as purchase price, closing date, contingency provisions (e.g., financing, inspection), and allocation of closing costs. During the due diligence period, buyers typically conduct inspections, review surveys, assess environmental conditions, and confirm zoning compliance.
+
+Financing real estate often involves mortgages or deeds of trust. Borrowers pledge property as security for repayment of the loan. Mortgage documents include covenants, default provisions, and acceleration clauses. Foreclosure procedures vary by jurisdiction and may be judicial or nonjudicial. Lenders must comply with consumer protection laws, such as the Truth in Lending Act and the Real Estate Settlement Procedures Act, which require disclosure of loan terms and costs.
+
+Land use and zoning regulations dictate how property may be used. Municipalities adopt zoning ordinances dividing areas into residential, commercial, industrial, or mixed-use districts. Zoning permits and variances may be required for specific uses or deviations. Compliance with building codes, environmental regulations, historic preservation laws, and accessibility standards is also essential.
+
+Lease agreements govern the relationship between landlords and tenants. Commercial leases often include provisions for rent, maintenance, common area charges, and options to renew. Residential leases are subject to landlord-tenant statutes covering security deposits, habitability standards, eviction procedures, and notice requirements. Landlords must avoid discriminatory practices under fair housing laws.
+
+Easements grant non-possessory rights to use anothers land for a specific purpose, such as access or utilities. Easements may be appurtenant (benefitting a particular parcel) or in gross (benefitting an individual or entity). Easements are created by express grant, necessity, prescription, or implication.
+
+Real estate developers navigate issues such as subdivision of land, condominium formation, homeowners associations, and environmental impact. Development agreements with municipalities may outline infrastructure responsibilities and mitigation measures. Public-private partnerships can involve complex legal arrangements for mixed-use or transit-oriented projects.
+
+Dispute resolution in real estate includes litigation, arbitration, and mediation. Common disputes involve boundary lines, encroachments, breaches of contract, landlord-tenant conflicts, construction defects, and homeowners association governance.
+
+Given the substantial investment and long-term implications of real estate transactions, parties should obtain legal advice, conduct thorough due diligence, and use clear written agreements. The interplay of property law, contract law, financial regulations, and local ordinances makes real estate a multifaceted field requiring specialized expertise.
